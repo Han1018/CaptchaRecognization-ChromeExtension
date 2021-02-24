@@ -1,0 +1,29 @@
+{
+  "name": "Getting Started Example",
+  "version": "1.0",
+  "description": "Build an Extension!",
+
+  "browser_action": {
+    "default_icon": "images/get_started128.png",
+    "default_popup": "popup.html",
+    "default_title": "Click here!"
+  },
+  "permissions": [
+    "activeTab",
+    "https://ajax.googleapis.com/",
+    "storage"
+  ],
+  "background" : {  
+    "scripts" : ["event.js"],  
+    "persistent" : false  
+  },
+  "content_scripts" : [  
+    {  
+        "matches" : ["*://nportal.ntut.edu.tw/index.do*",
+                     "*://nportal.ntut.edu.tw/login.do*"],  
+        "js" : ["jquery-3.5.1.slim.min.js","content.js"]
+        
+    }  
+  ],  
+  "manifest_version": 2
+}
