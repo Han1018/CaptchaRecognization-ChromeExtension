@@ -1,10 +1,10 @@
 # CaptchaRecognization-ChromeExtension
 用Chrome Extension 搭配分割式驗證碼辨識，簡單使用。
-###    概要
----
+##    概要
+------
 這篇主要是為了幫助快速登入學校的入口網站所設計的套件。目標是利用Chrome Extension，爬蟲抓取學校入口的驗證碼，再經由CNN辨識/驗證碼分割後CNN兩種方式，辨識驗證碼，進行自動登入。
-###    訓練方式/爬取訓練/預測資料
----
+##    訓練方式/爬取訓練/預測資料
+------
 因為CNN訓練需要的大量的資料，拿到資料會是訓練前的一個大重點。目前獲取驗證碼主要有主要幾種方式，最後考量技術難度和效果的平衡下，選擇的是切割驗證碼辨識，雖然是35%的辨識率，但因為爬蟲速度蠻快的，所以基本上1、2秒內就能成功辨識完。
 - 硬幹手動標註資料 : 
 
@@ -36,7 +36,7 @@
         這個方法可行性比較不確定，但需要考慮的是驗證碼由4個英文數字組成，所以也
         就有26^4種排列組合，如何在維度裡很好的切割各個區域的結果，那就是個要克
         服的問題了。
-###    模仿驗證碼
+##    模仿驗證碼
 ![](https://i.imgur.com/OtAC7mW.png)
 
 可以看到雖然是不太像拉，但應該也有畫出一個大概的輪廓八哈哈哈，反正最後也不是用這個方法實作出最後的。但還是有根據一些方法弄出的，主要概念是建立一個畫布，然後加入文字、背景、干擾線、點等，詳細可以看程式裡的。
@@ -89,7 +89,7 @@ def __gene_points(cls, draw, point_chance, width, height):
                 draw.point((w, h), fill=cls.__gene_random_color())
 ```
 
-###    預處理資料(1) - 清除驗證碼雜訊
+##    預處理資料(1) - 清除驗證碼雜訊
 為了讓切割更順利，需要先消除干擾點、線，網路上搜尋到的是利用回歸方法去除多餘的線，[點這](https://www.youtube.com/watch?v=4DHcOPSfC4c)。
 我們主要是覺得有點繁瑣，所以我們用了些圖像演算法，也達成也不錯的效果，因此也可以參考一下我們的。
 ![](https://i.imgur.com/1AHnURP.png)
@@ -119,7 +119,7 @@ def __gene_points(cls, draw, point_chance, width, height):
     可以直接用Medium Filter找出區域內經過排序的中間值，以此把一些剩餘的雜點去除或是縮小。而毛邊就可
     以用Morphology-Closing，將文字邊緣放大後再圓滑的縮小，讓邊緣可以看起來更平整一些。
 ```
-###    預處理資料(2)-切割文字
+##    預處理資料(2)-切割文字
 ---
 ![](https://i.imgur.com/OPuV5Ce.png)
 
@@ -151,12 +151,12 @@ def resplit(image):
     return split_image,part
 ```
 詳細的可以參考程式碼split_picture.py & resplit.py部分，切割後圖片為了能跑進CNN模型會需要將圖片Resize成統一大小，才能訓練/預測。
-###    建立模型(Keras)
+##    建立模型(Keras)
 我們建立的模型就是簡單標準的CNN，當然因為切割後的文字辨識，其實就相等於EMINST辨識十分簡單。所以資料來源也不一定需要是原始真實資料，這一次實作就是用不可考來源當作訓練資料集的。
 ![](https://i.imgur.com/8g0k5lh.png)
 *source:https://github.com/JasonLiTW/simple-railway-captcha-solver*
 我們的設計結構模型是仿照上面這一篇Githup大大實作的，細節也可以參考他的網站。
-###    部署模型(Flask)
+##    部署模型(Flask)
 為了將訓練好的模型套用至Chrome插件裡，需要將訓練好的Model包裝成一個API形式給插件使用，所以用到了Flask來製作這個簡單的API
 ```
 @app.route('/predict_image', methods=['POST'])
