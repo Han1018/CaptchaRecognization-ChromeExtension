@@ -174,3 +174,4 @@ def predict_image():
       #回傳預測結果
       return jsonify(response)
 ```
+##    包裝Google Extension
