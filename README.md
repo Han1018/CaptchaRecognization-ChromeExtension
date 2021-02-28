@@ -1,5 +1,9 @@
 # CaptchaRecognization-ChromeExtension
 用Chrome Extension 搭配分割式驗證碼辨識，簡單使用。
+
+https://user-images.githubusercontent.com/50899766/109412117-190fcb00-79e1-11eb-8676-95f2e99d5c04.mp4
+
+
 ##    概要
 這篇主要是為了幫助快速登入學校的入口網站所設計的套件。目標是利用Chrome Extension，爬蟲抓取學校入口的驗證碼，再經由CNN辨識/驗證碼分割後CNN兩種方式，辨識驗證碼，進行自動登入。
 ##    訓練方式/爬取訓練/預測資料
@@ -158,20 +162,103 @@ def resplit(image):
 ```
 @app.route('/predict_image', methods=['POST'])
 def predict_image():
-  print('hi')
-  image_list=[]
-  if request.method == 'POST':
-    if request.files.get('image'):
-      # 從 flask request 中讀取圖片（byte str）
-      image = request.files['image'].read()
-      # 將圖片轉成 PIL 可以使用的格式
-      image = Image.open(io.BytesIO(image))
-      #將圖片轉成np形式
-      image_list.append(np.array(image).reshape(39,135,3))
-      #預測
-      predict_res=main_exc(image_list)
-      response={"predict":predict_res}
-      #回傳預測結果
-      return jsonify(response)
+    image_list=[]
+    if request.method == 'POST':
+        if request.form.get('Url'):
+            #讀取驗證碼圖片
+            url = request.form.get('Url')
+            #將圖片轉成np格式
+            image = base64_to_image(url)
+            image_list.append(np.array(image).reshape(39,135,3))
+            #預測驗證碼
+            predict_res=main_exc(image_list)
+            
+            #輸出authcode
+            resp = Response(response=predict_res,status=200,content_type='text/html;charset=utf-8')
+            #允許跨來源資源共用(Cross-Origin Resource Sharing)
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept'
+            
+            return resp
 ```
-##    包裝Google Extension
+##    包裝插件(Google Extension)
+最後，建立一個插件供使用者使用
+1. 當進入所要登入之網站時，自動啟動插件功能
+```
+(function() {
+    if(document.URL.match("/login.do$")){
+        window.location.href = "https://nportal.ntut.edu.tw/index.do";
+    }
+    Init();    
+    PostNum();
+})();
+function Init(){
+    account = document.getElementById("muid");
+    pwd = document.getElementById("mpassword");
+    authcode = document.getElementById("authcode");
+    token = document.getElementsByName("token")[0];
+    authimg = document.getElementById("authImage").getAttribute("src");
+}
+```
+2. 將圖片傳進伺服器請求所預測的驗證碼
+```
+function PostNum(){
+    //向伺服器傳送要求
+    var request = new XMLHttpRequest();
+    request.open("POST", "http://*伺服器網址*/predict_image",true) ;
+    request.setRequestHeader( 'Access-Control-Allow-Origin',"https://nportal.ntut.edu.tw/index.do" );
+    request.setRequestHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    
+    //將圖片傳給伺服器並要求驗證碼
+    request.send(GetPicture());
+    request.onreadystatechange = function() {
+        // 伺服器請求完成
+        if (request.readyState === 4) {
+            // 伺服器回應成功
+            if (request.status === 200) {
+                var type = request.getResponseHeader("Content-Type");   // 取得回應類型
+                // 判斷回應類型，這裡使用 JSON
+                var data = request.responseText;
+                //將預測驗證碼填入驗證碼欄位
+                authcode.setAttribute("value",data);
+                Login();
+            } else {
+                alert("發生錯誤: " + request.status);
+            }
+        }
+    }
+}
+
+```
+由於我們發現由不同來源(ip)向學校伺服器傳送的要求，會得到不同的驗證碼圖片，因此我們直接爬該頁面所產生的驗證碼圖片，將他整張傳入伺服器
+```
+function GetPicture(){
+    var canvas = document.createElement('CANVAS');
+    var context = canvas.getContext('2d');
+    canvas.setAttribute('width',135);
+    canvas.setAttribute('height',39);
+    context.drawImage(document.getElementById("authImage"),0,0);
+    dataURL = canvas.toDataURL('image/png');
+    data.append("Url", dataURL);
+    return data;
+}
+```
+3. 再由插件自動輸入驗證碼並傳送登入要求給網站伺服器來完成自動登入的功能
+```
+function Login(){
+    
+    var login = document.getElementsByName("login")[0];
+    var inputs = document.getElementsByTagName('input');
+    //取得使用者存入chrome的帳號密碼
+    chrome.storage.sync.get({
+        account: '',
+        pwd: ''
+    }, function(items) {
+        document.getElementById('muid').value = items.account;
+        document.getElementById('mpassword').value = items.pwd;
+        //傳送登入要求給登入網站
+        login.submit();
+    });
+    
+}
+```
